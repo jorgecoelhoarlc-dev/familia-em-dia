@@ -1,1 +1,511 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Família em Dia</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --verde: #285b50;
+      --fundo: #f4f7f3;
+      --borda: #dfe7e0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--fundo);
+      color: #20312d;
+    }
+    header {
+      background: var(--verde);
+      color: white;
+      padding: 24px 18px;
+    }
+    header div, main { max-width: 950px; margin: auto; }
+    h1 { margin: 0; font-size: 27px; }
+    header p { margin: 7px 0 0; opacity: .85; }
+    main { padding: 22px 15px 45px; }
+    .card {
+      background: white;
+      border: 1px solid var(--borda);
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+    h2 { font-size: 21px; margin-top: 0; }
+    h3 { font-size: 17px; }
+    button, input, select, textarea { font: inherit; }
+    button {
+      border: 0;
+      border-radius: 9px;
+      padding: 11px 14px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .primary { background: var(--verde); color: white; }
+    .secondary { background: #e4eee8; color: #203c35; }
+    input, select, textarea {
+      width: 100%;
+      padding: 11px;
+      border: 1px solid #ccd8ce;
+      border-radius: 9px;
+      background: white;
+      color: #20312d;
+    }
+    label { display: grid; gap: 6px; font-size: 14px; font-weight: bold; }
+    form { display: grid; gap: 12px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 16px; }
+    .tab { background: #e4eee8; color: #203c35; }
+    .tab.active { background: var(--verde); color: white; }
+    .hidden { display: none !important; }
+    .row { border-bottom: 1px solid #e7ece8; padding: 13px 0; }
+    .row:last-child { border-bottom: 0; }
+    .muted { color: #63736a; font-size: 13px; line-height: 1.5; }
+    .message { padding: 12px; border-radius: 9px; margin-bottom: 14px; background: #e4eee8; }
+    .danger { background: #f9e6e2; color: #812e23; }
+    .rowtop { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+    .rowtop strong { overflow-wrap: anywhere; }
+    .smallbtn { padding: 7px 10px; font-size: 12px; }
+    @media(max-width:600px) {
+      .grid { grid-template-columns: 1fr; }
+      main { padding: 15px 10px 30px; }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>⌂ Família em Dia</h1>
+    <p>A nossa semana, num só lugar.</p>
+  </div>
+</header>
 
+<main>
+  <div id="message" class="message hidden"></div>
+
+  <section id="auth" class="card">
+    <h2>Entrar na nossa família</h2>
+    <p class="muted">Cada pessoa utiliza a sua própria conta.</p>
+    <form id="login-form">
+      <label>Email
+        <input id="email" type="email" autocomplete="email" required>
+      </label>
+      <label>Palavra-passe
+        <input id="password" type="password" autocomplete="current-password" required>
+      </label>
+      <button class="primary" type="submit">Iniciar sessão</button>
+      <button class="secondary" type="button" id="signup">Criar conta</button>
+    </form>
+  </section>
+
+  <section id="app" class="hidden">
+    <div class="card">
+      <div class="rowtop">
+        <div>
+          <h2 id="family-name">A nossa família</h2>
+          <p id="user-email" class="muted"></p>
+        </div>
+        <button id="logout" class="secondary">Sair</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="events">Atividades</button>
+      <button class="tab" data-tab="meals">Jantares</button>
+      <button class="tab" data-tab="rest">Folgas e descanso</button>
+    </div>
+
+    <section id="panel-events" class="card">
+      <h2>Adicionar atividade</h2>
+      <form id="event-form">
+        <label>Nome da atividade
+          <input name="title" required placeholder="Ex.: Consulta, treino, compras">
+        </label>
+        <div class="grid">
+          <label>Data
+            <input name="event_date" type="date" required>
+          </label>
+          <label>Hora
+            <input name="event_time" type="time">
+          </label>
+          <label>Quem participa?
+            <select name="person">
+              <option>Ambos</option>
+              <option>Eu</option>
+              <option>Companheira</option>
+            </select>
+          </label>
+        </div>
+        <label>Notas (opcional)
+          <textarea name="notes" rows="2" placeholder="Informações adicionais"></textarea>
+        </label>
+        <button class="primary" type="submit">Guardar atividade</button>
+      </form>
+      <h3>Atividades registadas</h3>
+      <div id="events-list">A carregar...</div>
+    </section>
+
+    <section id="panel-meals" class="card hidden">
+      <h2>Planear jantar</h2>
+      <form id="meal-form">
+        <label>Data do jantar
+          <input name="meal_date" type="date" required>
+        </label>
+        <label>O que vamos comer?
+          <input name="meal_name" required placeholder="Ex.: Frango no forno">
+        </label>
+        <label>Acompanhamento ou notas
+          <textarea name="notes" rows="2" placeholder="Ex.: Batata e legumes"></textarea>
+        </label>
+        <button class="primary" type="submit">Guardar jantar</button>
+      </form>
+      <h3>Plano de jantares</h3>
+      <div id="meals-list">A carregar...</div>
+    </section>
+
+    <section id="panel-rest" class="card hidden">
+      <h2>Registar folga ou descanso</h2>
+      <form id="rest-form">
+        <label>Data
+          <input name="rest_date" type="date" required>
+        </label>
+        <div class="grid">
+          <label>Quem?
+            <select name="person">
+              <option>Eu</option>
+              <option>Companheira</option>
+              <option>Ambos</option>
+            </select>
+          </label>
+          <label>Tipo
+            <select name="rest_type">
+              <option>Folga</option>
+              <option>Descanso</option>
+              <option>Férias</option>
+              <option>Dia livre</option>
+            </select>
+          </label>
+        </div>
+        <label>Notas (opcional)
+          <textarea name="notes" rows="2"></textarea>
+        </label>
+        <button class="primary" type="submit">Guardar descanso</button>
+      </form>
+      <h3>Folgas e dias de descanso</h3>
+      <div id="rest-list">A carregar...</div>
+    </section>
+    <p class="muted">Os dados são partilhados através da base de dados da família.</p>
+  </section>
+</main>
+
+<script>
+(() => {
+  const SUPABASE_URL = 'https://ospjnjclgaphojafoopr.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_VE4DGQvuSfzPINhApNIKfw_AseOcWUA';
+
+  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const $ = id => document.getElementById(id);
+
+  let user = null;
+  let familyId = null;
+
+  function message(text, error = false) {
+    const el = $('message');
+    el.textContent = text;
+    el.classList.remove('hidden', 'danger');
+    if (error) el.classList.add('danger');
+  }
+
+  function clearMessage() {
+    $('message').classList.add('hidden');
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;',
+      '"': '&quot;', "'": '&#39;'
+    })[c]);
+  }
+
+  function dateLabel(value) {
+    if (!value) return '';
+    const parts = value.split('-').map(Number);
+    return new Intl.DateTimeFormat('pt-PT', {
+      weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
+    }).format(new Date(parts[0], parts[1] - 1, parts[2]));
+  }
+
+  function formData(form) {
+    return Object.fromEntries(new FormData(form).entries());
+  }
+
+  function setTodayDefaults() {
+    const today = new Date();
+    const localDate = [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, '0'),
+      String(today.getDate()).padStart(2, '0')
+    ].join('-');
+
+    document.querySelectorAll('input[type="date"]').forEach(input => {
+      if (!input.value) input.value = localDate;
+    });
+  }
+
+  async function startApp(sessionUser) {
+    user = sessionUser;
+    familyId = null;
+    $('auth').classList.add('hidden');
+    $('app').classList.add('hidden');
+    message('A verificar a ligação à família...');
+
+    const { data: membership, error: memberError } = await db
+      .from('family_members')
+      .select('family_id, role')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (memberError) {
+      message('Não foi possível verificar a família: ' + memberError.message, true);
+      $('auth').classList.remove('hidden');
+      return;
+    }
+
+    if (!membership) {
+      message('Esta conta ainda não está associada a uma família. Confirma os membros na base de dados do Supabase.', true);
+      $('auth').classList.remove('hidden');
+      return;
+    }
+
+    familyId = membership.family_id;
+
+    const { data: family, error: familyError } = await db
+      .from('families')
+      .select('name')
+      .eq('id', familyId)
+      .maybeSingle();
+
+    if (familyError) {
+      message('Não foi possível carregar a família: ' + familyError.message, true);
+      $('auth').classList.remove('hidden');
+      return;
+    }
+
+    $('family-name').textContent = family?.name || 'A nossa família';
+    $('user-email').textContent = user.email || '';
+    $('app').classList.remove('hidden');
+    clearMessage();
+    setTodayDefaults();
+    await refreshAll();
+  }
+
+  async function refreshAll() {
+    await Promise.all([loadEvents(), loadMeals(), loadRest()]);
+  }
+
+  async function loadEvents() {
+    const { data, error } = await db.from('events')
+      .select('*').eq('family_id', familyId)
+      .order('event_date', { ascending: true })
+      .order('event_time', { ascending: true });
+
+    if (error) {
+      $('events-list').textContent = 'Erro ao carregar: ' + error.message;
+      return;
+    }
+
+    $('events-list').innerHTML = data.length ? data.map(item => `
+      <div class="row">
+        <div class="rowtop">
+          <strong>${escapeHtml(item.title)}</strong>
+          <span class="muted">${escapeHtml(item.event_time || '')}</span>
+        </div>
+        <div class="muted">${escapeHtml(dateLabel(item.event_date))} · ${escapeHtml(item.person || 'Ambos')}</div>
+        ${item.notes ? `<p>${escapeHtml(item.notes)}</p>` : ''}
+        ${item.created_by === user.id ? `<button class="secondary smallbtn" data-delete="events" data-id="${escapeHtml(item.id)}">Apagar</button>` : ''}
+      </div>
+    `).join('') : '<p class="muted">Ainda não há atividades. Adicionem a primeira!</p>';
+  }
+
+  async function loadMeals() {
+    const { data, error } = await db.from('meals')
+      .select('*').eq('family_id', familyId)
+      .order('meal_date', { ascending: true });
+
+    if (error) {
+      $('meals-list').textContent = 'Erro ao carregar: ' + error.message;
+      return;
+    }
+
+    $('meals-list').innerHTML = data.length ? data.map(item => `
+      <div class="row">
+        <strong>${escapeHtml(dateLabel(item.meal_date))}</strong>
+        <div>${escapeHtml(item.meal_name || 'Jantar por definir')}</div>
+        ${item.notes ? `<div class="muted">${escapeHtml(item.notes)}</div>` : ''}
+        ${item.created_by === user.id ? `<button class="secondary smallbtn" data-delete="meals" data-id="${escapeHtml(item.id)}">Apagar</button>` : ''}
+      </div>
+    `).join('') : '<p class="muted">Ainda não há jantares planeados.</p>';
+  }
+
+  async function loadRest() {
+    const { data, error } = await db.from('rest_days')
+      .select('*').eq('family_id', familyId)
+      .order('rest_date', { ascending: true });
+
+    if (error) {
+      $('rest-list').textContent = 'Erro ao carregar: ' + error.message;
+      return;
+    }
+
+    $('rest-list').innerHTML = data.length ? data.map(item => `
+      <div class="row">
+        <strong>${escapeHtml(dateLabel(item.rest_date))}</strong>
+        <div>${escapeHtml(item.person)} · ${escapeHtml(item.rest_type)}</div>
+        ${item.notes ? `<div class="muted">${escapeHtml(item.notes)}</div>` : ''}
+        ${item.created_by === user.id ? `<button class="secondary smallbtn" data-delete="rest_days" data-id="${escapeHtml(item.id)}">Apagar</button>` : ''}
+      </div>
+    `).join('') : '<p class="muted">Ainda não há folgas registadas.</p>';
+  }
+
+  async function saveRecord(table, values, form) {
+    clearMessage();
+    const { error } = await db.from(table).insert({
+      ...values,
+      family_id: familyId,
+      created_by: user.id
+    });
+
+    if (error) {
+      message('Não foi possível guardar. ' + error.message, true);
+      return;
+    }
+
+    form.reset();
+    setTodayDefaults();
+    message('Guardado com sucesso!');
+    await refreshAll();
+  }
+
+  $('login-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    clearMessage();
+    const email = $('email').value.trim();
+    const password = $('password').value;
+    const { data, error } = await db.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      message('Não foi possível iniciar sessão: ' + error.message, true);
+      return;
+    }
+    await startApp(data.user);
+  });
+
+  $('signup').addEventListener('click', async () => {
+    const email = $('email').value.trim();
+    const password = $('password').value;
+
+    if (!email || password.length < 6) {
+      message('Preenche o email e uma palavra-passe com pelo menos 6 caracteres.', true);
+      return;
+    }
+
+    const { data, error } = await db.auth.signUp({ email, password });
+
+    if (error) {
+      message('Não foi possível criar a conta: ' + error.message, true);
+      return;
+    }
+
+    if (data.session && data.user) {
+      await startApp(data.user);
+    } else {
+      message('Conta criada. Confirma o email, se te for pedido, e depois inicia sessão.');
+    }
+  });
+
+  $('logout').addEventListener('click', async () => {
+    const { error } = await db.auth.signOut();
+    if (error) {
+      message('Erro ao terminar sessão: ' + error.message, true);
+      return;
+    }
+    user = null;
+    familyId = null;
+    $('app').classList.add('hidden');
+    $('auth').classList.remove('hidden');
+    message('Sessão terminada.');
+  });
+
+  $('event-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const values = formData(form);
+    if (!values.event_time) values.event_time = null;
+    await saveRecord('events', values, form);
+  });
+
+  $('meal-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    await saveRecord('meals', formData(form), form);
+  });
+
+  $('rest-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    await saveRecord('rest_days', formData(form), form);
+  });
+
+  document.querySelectorAll('[data-tab]').forEach(button => {
+    button.addEventListener('click', () => {
+      document.querySelectorAll('[data-tab]').forEach(item => item.classList.remove('active'));
+      button.classList.add('active');
+      ['events', 'meals', 'rest'].forEach(tab => {
+        $('panel-' + tab).classList.toggle('hidden', tab !== button.dataset.tab);
+      });
+    });
+  });
+
+  document.addEventListener('click', async event => {
+    const button = event.target.closest('[data-delete]');
+    if (!button || !user || !familyId) return;
+    if (!confirm('Queres mesmo apagar este registo?')) return;
+
+    const table = button.dataset.delete;
+    const id = button.dataset.id;
+    const { error } = await db.from(table)
+      .delete()
+      .eq('id', id)
+      .eq('family_id', familyId)
+      .eq('created_by', user.id);
+
+    if (error) {
+      message('Não foi possível apagar: ' + error.message, true);
+      return;
+    }
+
+    message('Registo apagado.');
+    await refreshAll();
+  });
+
+  db.auth.getSession().then(({ data, error }) => {
+    if (error) {
+      message('Erro de autenticação: ' + error.message, true);
+      return;
+    }
+    if (data.session?.user) startApp(data.session.user);
+  });
+
+  db.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session?.user && !user) {
+      startApp(session.user);
+    }
+  });
+})();
+</script>
+</body>
+</html>
